@@ -1,0 +1,136 @@
+name: Commit Review
+
+on:
+  push:
+    branches:
+      - 'v*'
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Review Commits with Claude
+        id: review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
+          prompt: |
+            /review-commit REPO: ${{ github.repository }} SHA: ${{ github.sha }} BRANCH: ${{ github.ref_name }}
+          claude_args: |
+            --allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Glob" "Grep"
+
+      - name: Notify Feishu
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+
+          # 读取审查摘要
+          if [ -f /tmp/review-summary.json ]; then
+            CONCLUSION=$(jq -r '.conclusion // "UNKNOWN"' /tmp/review-summary.json)
+            SUMMARY=$(jq -r '.summary // "审查完成"' /tmp/review-summary.json)
+          else
+            CONCLUSION="UNKNOWN"
+            SUMMARY="未获取到审查摘要"
+          fi
+
+          # 根据结论设置样式
+          case "$CONCLUSION" in
+            "PASS")
+              EMOJI="✅"
+              TEMPLATE="green"
+              ;;
+            "FAIL")
+              EMOJI="❌"
+              TEMPLATE="red"
+              ;;
+            "WARN")
+              EMOJI="⚠️"
+              TEMPLATE="orange"
+              ;;
+            *)
+              EMOJI="💬"
+              TEMPLATE="blue"
+              ;;
+          esac
+
+          if [ "$STATUS" != "success" ]; then
+            EMOJI="⚠️"
+            TEMPLATE="orange"
+            SUMMARY="Action 执行异常"
+          fi
+
+          curl -X POST "https://open.feishu.cn/open-apis/bot/v2/hook/${{ secrets.FEISHU_WEBHOOK_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "msg_type": "interactive",
+              "card": {
+                "header": {
+                  "title": {
+                    "tag": "plain_text",
+                    "content": "'"${EMOJI} Commit Review - ${CONCLUSION}"'"
+                  },
+                  "template": "'"${TEMPLATE}"'"
+                },
+                "elements": [
+                  {
+                    "tag": "div",
+                    "fields": [
+                      {
+                        "is_short": true,
+                        "text": {
+                          "tag": "lark_md",
+                          "content": "**仓库**\n${{ github.repository }}"
+                        }
+                      },
+                      {
+                        "is_short": true,
+                        "text": {
+                          "tag": "lark_md",
+                          "content": "**分支**\n${{ github.ref_name }}"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "div",
+                    "text": {
+                      "tag": "lark_md",
+                      "content": "**Commit**: '"${SHORT_SHA}"'"
+                    }
+                  },
+                  {
+                    "tag": "div",
+                    "text": {
+                      "tag": "lark_md",
+                      "content": "**审查结果**: '"${SUMMARY}"'"
+                    }
+                  },
+                  {
+                    "tag": "action",
+                    "actions": [
+                      {
+                        "tag": "button",
+                        "text": {
+                          "tag": "plain_text",
+                          "content": "查看 Commit"
+                        },
+                        "type": "primary",
+                        "url": "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }'
