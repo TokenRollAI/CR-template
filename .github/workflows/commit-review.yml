@@ -25,7 +25,7 @@ jobs:
           github_token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
-          direct_prompt: |
+          prompt: |
             你是一个代码审查助手。请对最新的 commit 进行简单审查。
 
             ## 审查信息
