@@ -24,7 +24,7 @@ jobs:
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
         with:
-          github_token: ${{ github.token }}
+          github_token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           use_sticky_comment: true
           show_full_output: true
