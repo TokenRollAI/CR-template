@@ -76,7 +76,7 @@ jobs:
 
             ALWAYS Answer in 简体中文.
           claude_args: |
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)" --json-schema '{"type":"object","properties":{"conclusion":{"type":"string","enum":["APPROVE","REQUEST_CHANGES","COMMENT"]},"summary":{"type":"string","maxLength":50},"critical_count":{"type":"integer"},"important_count":{"type":"integer"},"suggestion_count":{"type":"integer"}},"required":["conclusion","summary","critical_count","important_count","suggestion_count"]}'
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Glob,Grep,Task" --json-schema '{"type":"object","properties":{"conclusion":{"type":"string","enum":["APPROVE","REQUEST_CHANGES","COMMENT"]},"summary":{"type":"string","maxLength":50},"critical_count":{"type":"integer"},"important_count":{"type":"integer"},"suggestion_count":{"type":"integer"}},"required":["conclusion","summary","critical_count","important_count","suggestion_count"]}'
       - name: Notify Feishu
         if: always()
         run: |
