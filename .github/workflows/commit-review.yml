@@ -24,7 +24,7 @@ jobs:
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
         with:
-          github_token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+          github_token: ${{ secrets.CUSTOM_GITHUB_TOKEN || github.token }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
             你是一个代码审查助手。请对最新的 commit 进行简单审查。
@@ -59,7 +59,18 @@ jobs:
             2. 只关注明显问题
             3. 使用简体中文
           claude_args: |
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)" --json-schema '{"type":"object","properties":{"conclusion":{"type":"string","enum":["PASS","WARN","FAIL"]},"summary":{"type":"string","maxLength":50}},"required":["conclusion","summary"]}'
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Glob,Grep,Task" 
+            --json-schema '{
+              "type": "object",
+              "properties": {
+                "conclusion": {"type": "string", "enum": ["APPROVE", "REQUEST_CHANGES", "COMMENT"]},
+                "summary": {"type": "string", "maxLength": 50},
+                "critical_count": {"type": "integer"},
+                "important_count": {"type": "integer"},
+                "suggestion_count": {"type": "integer"}
+              },
+              "required": ["conclusion", "summary", "critical_count", "important_count", "suggestion_count"]
+            }'
 
       - name: Notify Feishu
         if: always()
