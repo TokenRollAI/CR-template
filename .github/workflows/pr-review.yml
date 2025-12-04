@@ -26,10 +26,83 @@ jobs:
           github_token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
-          prompt: |
-            /review-pr REPO: ${{ github.repository }} PR_NUMBER: ${{ github.event.pull_request.number }}
-          # claude_args: |
-            # --allowedTools "Bash(gh pr *)" "Bash(git *)" "Read" "Glob" "Grep" "Task" "WebFetch"
+          direct_prompt: |
+            你是一个专业的代码审查助手。请对 PR #${{ github.event.pull_request.number }} 进行全面审查。
+
+            ## 审查信息
+            - 仓库: ${{ github.repository }}
+            - PR 编号: ${{ github.event.pull_request.number }}
+            - PR 标题: ${{ github.event.pull_request.title }}
+
+            ## 审查步骤
+
+            ### 1. 获取 PR 信息
+            执行以下命令获取 PR 详情和代码变更：
+            ```bash
+            gh pr view ${{ github.event.pull_request.number }} --json number,title,body,author,baseRefName,headRefName,files,additions,deletions,changedFiles
+            gh pr diff ${{ github.event.pull_request.number }}
+            ```
+
+            ### 2. 分析代码
+            审查以下维度：
+
+            **代码质量**：代码风格、复杂度、重复代码、命名规范、错误处理、潜在 bug
+
+            **架构设计**：项目结构一致性、依赖合理性、设计模式、关注点分离
+
+            ### 3. 保存审查摘要
+            将审查结果写入文件（用于飞书通知）：
+            ```bash
+            cat > /tmp/review-summary.json << 'EOF'
+            {
+              "conclusion": "APPROVE 或 REQUEST_CHANGES 或 COMMENT",
+              "summary": "一句话总结（不超过50字）",
+              "critical_count": 0,
+              "important_count": 0,
+              "suggestion_count": 0
+            }
+            EOF
+            ```
+            请根据实际审查结果填写 JSON 内容。
+
+            ### 4. 发布审查评论
+            使用以下格式发布评论：
+            ```bash
+            gh pr review ${{ github.event.pull_request.number }} --comment --body "评论内容"
+            ```
+
+            ## 输出格式（简体中文）
+
+            ```markdown
+            ## 🔍 PR 代码审查报告
+
+            ### 📋 概要
+            - **PR 标题**: {title}
+            - **作者**: {author}
+            - **变更文件数**: {changedFiles}
+            - **新增/删除行数**: +{additions} / -{deletions}
+
+            ### 🎯 审查结论
+            {APPROVE/REQUEST_CHANGES/COMMENT 及简要说明}
+
+            ### 🔴 严重问题 (Critical)
+            {严重问题列表，如无则显示"无"}
+
+            ### 🟠 重要问题 (Important)
+            {重要问题列表，如无则显示"无"}
+
+            ### 🟢 改进建议 (Suggestions)
+            {改进建议列表，如无则显示"无"}
+
+            ### 💡 总体评价
+            {对本次 PR 的整体评价}
+            ```
+
+            ## 注意事项
+            1. 所有评论使用简体中文
+            2. 给出具体的文件名和行号
+            3. 对好的实践也要给予肯定
+            4. 保持客观、专业
 
       - name: Notify Feishu
         if: always()
