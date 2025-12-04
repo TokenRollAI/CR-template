@@ -28,8 +28,8 @@ jobs:
           anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
           prompt: |
             /review-pr REPO: ${{ github.repository }} PR_NUMBER: ${{ github.event.pull_request.number }}
-          claude_args: |
-            --allowedTools "Bash(gh pr *)" "Bash(git *)" "Read" "Glob" "Grep" "Task" "WebFetch"
+          # claude_args: |
+            # --allowedTools "Bash(gh pr *)" "Bash(git *)" "Read" "Glob" "Grep" "Task" "WebFetch"
 
       - name: Notify Feishu
         if: always()
