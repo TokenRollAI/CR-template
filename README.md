@@ -10,6 +10,7 @@
 | Commit Review | v* 分支 push 时自动审查最新 commit |
 | 飞书通知 | 审查完成后发送卡片消息到飞书群 |
 | 中文输出 | 所有审查报告和通知使用简体中文 |
+| Sticky Comment | PR 多次审查会更新同一条评论 |
 
 ## 快速开始
 
@@ -21,10 +22,6 @@
 .github/workflows/
 ├── pr-review.yml       # PR 审查工作流
 └── commit-review.yml   # Commit 审查工作流
-
-.claude/commands/
-├── review-pr.md        # PR 审查命令
-└── review-commit.md    # Commit 审查命令
 ```
 
 ### 2. 配置 GitHub Secrets
@@ -35,6 +32,7 @@
 |------------|:----:|------|
 | `ANTHROPIC_API_KEY` | ✅ | Anthropic API 密钥 |
 | `ANTHROPIC_BASE_URL` | ❌ | API 基础 URL（使用代理时需要） |
+| `CUSTOM_GITHUB_TOKEN` | ❌ | 自定义 GitHub Token（默认使用 GITHUB_TOKEN） |
 | `FEISHU_WEBHOOK_TOKEN` | ✅ | 飞书机器人 Webhook Token |
 
 ### 3. 获取飞书 Webhook Token
@@ -102,8 +100,6 @@
 ## 🔍 PR 代码审查报告
 
 ### 📋 概要
-- **PR 标题**: feat: 添加用户认证模块
-- **作者**: developer
 - **变更文件数**: 5
 - **新增/删除行数**: +120 / -15
 
@@ -195,9 +191,27 @@ on:
       - 'main'      # 添加 main 分支
 ```
 
-### 修改审查维度
+### 修改审查 Prompt
 
-编辑 `.claude/commands/review-pr.md` 或 `review-commit.md` 中的审查流程。
+编辑 workflow 文件中的 `prompt` 字段：
+
+```yaml
+- name: PR Review with Claude
+  uses: anthropics/claude-code-action@v1
+  with:
+    prompt: |
+      你是一个专业的代码审查助手...
+      # 自定义审查要求
+```
+
+### 修改结构化输出
+
+编辑 `claude_args` 中的 `--json-schema`：
+
+```yaml
+claude_args: |
+  --json-schema '{"type":"object","properties":{...}}'
+```
 
 ## 文件结构
 
@@ -207,12 +221,14 @@ on:
 │   └── workflows/
 │       ├── pr-review.yml        # PR 审查工作流
 │       └── commit-review.yml    # Commit 审查工作流
-├── .claude/
-│   └── commands/
-│       ├── review-pr.md         # PR 审查命令定义
-│       └── review-commit.md     # Commit 审查命令定义
 └── README.md
 ```
+
+## 技术说明
+
+- 使用 [claude-code-action](https://github.com/anthropics/claude-code-action) v1
+- 通过 `--json-schema` 获取结构化输出用于飞书通知
+- PR Review 使用 `use_sticky_comment` 合并多次评论
 
 ## License
 
