@@ -25,10 +25,63 @@ jobs:
           github_token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
-          prompt: |
-            /review-commit REPO: ${{ github.repository }} SHA: ${{ github.sha }} BRANCH: ${{ github.ref_name }}
-          # claude_args: |
-            # --allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Glob" "Grep"
+          direct_prompt: |
+            你是一个代码审查助手。请对最新的 commit 进行简单审查。
+
+            ## 审查信息
+            - 仓库: ${{ github.repository }}
+            - 分支: ${{ github.ref_name }}
+            - Commit SHA: ${{ github.sha }}
+
+            ## 审查步骤
+
+            ### 1. 获取 Commit 信息
+            执行以下命令：
+            ```bash
+            git show --stat ${{ github.sha }}
+            git show ${{ github.sha }}
+            ```
+
+            ### 2. 快速分析
+            检查：
+            - commit 信息是否清晰
+            - 代码变更是否合理
+            - 是否有明显问题
+
+            ### 3. 保存审查摘要
+            将结果写入文件（用于飞书通知）：
+            ```bash
+            cat > /tmp/review-summary.json << 'EOF'
+            {
+              "conclusion": "PASS 或 WARN 或 FAIL",
+              "summary": "一句话总结（不超过50字）"
+            }
+            EOF
+            ```
+            请根据实际审查结果填写。
+
+            ## 输出格式（简体中文）
+
+            直接输出简要报告：
+            ```
+            ## 📝 Commit 审查 - ${{ github.ref_name }}
+
+            **Commit**: {short_sha}
+            **信息**: {commit message}
+
+            ### 变更概要
+            {变更文件列表}
+
+            ### 审查结果
+            ✅/⚠️/❌ {简要评价}
+
+            {如有问题，列出1-3个要点}
+            ```
+
+            ## 注意事项
+            1. 保持简洁
+            2. 只关注明显问题
+            3. 使用简体中文
 
       - name: Notify Feishu
         if: always()
