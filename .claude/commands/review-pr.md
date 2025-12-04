@@ -78,6 +78,7 @@ EOF
 ```
 
 **重要**: 必须在发布评论前将摘要写入 `/tmp/review-summary.json`，格式为 JSON：
+
 - `conclusion`: 审查结论 (APPROVE/REQUEST_CHANGES/COMMENT)
 - `summary`: 一句话总结（不超过 50 字）
 - `critical_count`: 严重问题数量
