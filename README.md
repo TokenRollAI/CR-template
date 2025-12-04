@@ -1,13 +1,12 @@
 # CR-template
 
-基于 Claude AI 的自动化代码审查模板，支持 PR Review 和 Commit Review，并通过飞书 Webhook 发送通知。
+基于 Claude AI 的自动化 PR 代码审查模板，通过飞书 Webhook 发送通知。
 
 ## 功能特性
 
 | 功能 | 说明 |
 |-----|------|
 | PR Review | PR 创建/更新时自动审查代码质量和架构设计 |
-| Commit Review | v* 分支 push 时自动审查最新 commit |
 | 飞书通知 | 审查完成后发送卡片消息到飞书群 |
 | 中文输出 | 所有审查报告和通知使用简体中文 |
 | Sticky Comment | PR 多次审查会更新同一条评论 |
@@ -20,8 +19,7 @@
 
 ```
 .github/workflows/
-├── pr-review.yml       # PR 审查工作流
-└── commit-review.yml   # Commit 审查工作流
+└── pr-review.yml       # PR 审查工作流
 ```
 
 ### 2. 配置 GitHub Secrets
@@ -47,8 +45,6 @@
 
 ## 触发条件
 
-### PR Review
-
 当 Pull Request 满足以下条件时触发：
 
 | 事件 | 说明 |
@@ -60,15 +56,7 @@
 
 > **注意**: 草稿 PR 不会触发审查
 
-### Commit Review
-
-当 push 到以下分支时触发：
-
-- `v*` - 所有以 `v` 开头的分支（如 `v1.0`、`v2.0-beta`）
-
 ## 审查维度
-
-### PR Review
 
 **代码质量**
 - 代码风格一致性
@@ -86,15 +74,7 @@
 - 模块化程度
 - API 设计评估
 
-### Commit Review
-
-- Commit 信息是否清晰
-- 代码变更是否合理
-- 是否有明显问题
-
 ## 审查报告示例
-
-### PR Review 报告
 
 ```markdown
 ## 🔍 PR 代码审查报告
@@ -120,27 +100,9 @@
 本次 PR 实现了用户认证的核心功能，代码结构清晰...
 ```
 
-### Commit Review 报告
-
-```markdown
-## 📝 Commit 审查 - v1.0
-
-**Commit**: `abc1234`
-**信息**: feat: 添加登录功能
-
-### 变更概要
-- src/login.ts (+50)
-- tests/login.test.ts (+30)
-
-### 审查结果
-✅ PASS - 代码变更合理，无明显问题
-```
-
 ## 飞书通知
 
 审查完成后会发送飞书卡片消息：
-
-### PR Review 通知
 
 ```
 ┌──────────────────────────────────┐
@@ -154,42 +116,15 @@
 └──────────────────────────────────┘
 ```
 
-### Commit Review 通知
-
-```
-┌──────────────────────────────────┐
-│ ✅ Commit Review - PASS          │ (绿色卡片)
-├──────────────────────────────────┤
-│ 仓库: owner/repo   分支: v1.0    │
-│ Commit: abc1234                  │
-│ 审查结果: 代码变更合理，无明显问题  │
-│ [查看 Commit]                    │
-└──────────────────────────────────┘
-```
-
 ### 卡片颜色说明
 
 | 审查结论 | 卡片颜色 |
 |---------|---------|
-| APPROVE / PASS | 🟢 绿色 |
-| REQUEST_CHANGES / FAIL | 🔴 红色 |
-| WARN | 🟠 橙色 |
+| APPROVE | 🟢 绿色 |
+| REQUEST_CHANGES | 🔴 红色 |
 | COMMENT / 其他 | 🔵 蓝色 |
 
 ## 自定义配置
-
-### 修改触发分支
-
-编辑 `.github/workflows/commit-review.yml`：
-
-```yaml
-on:
-  push:
-    branches:
-      - 'v*'        # 所有 v 开头的分支
-      - 'release/*' # 添加 release 分支
-      - 'main'      # 添加 main 分支
-```
 
 ### 修改审查 Prompt
 
@@ -219,8 +154,7 @@ claude_args: |
 .
 ├── .github/
 │   └── workflows/
-│       ├── pr-review.yml        # PR 审查工作流
-│       └── commit-review.yml    # Commit 审查工作流
+│       └── pr-review.yml        # PR 审查工作流
 └── README.md
 ```
 
@@ -228,7 +162,7 @@ claude_args: |
 
 - 使用 [claude-code-action](https://github.com/anthropics/claude-code-action) v1
 - 通过 `--json-schema` 获取结构化输出用于飞书通知
-- PR Review 使用 `use_sticky_comment` 合并多次评论
+- 使用 `use_sticky_comment` 合并多次评论
 
 ## License
 
