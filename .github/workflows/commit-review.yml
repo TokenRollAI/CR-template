@@ -35,35 +35,11 @@ jobs:
 
             ## 审查步骤
 
-            ### 1. 获取 Commit 信息
-            执行以下命令：
-            ```bash
-            git show --stat ${{ github.sha }}
-            git show ${{ github.sha }}
-            ```
-
-            ### 2. 快速分析
-            检查：
-            - commit 信息是否清晰
-            - 代码变更是否合理
-            - 是否有明显问题
-
-            ### 3. 保存审查摘要
-            将结果写入文件（用于飞书通知）：
-            ```bash
-            cat > /tmp/review-summary.json << 'EOF'
-            {
-              "conclusion": "PASS 或 WARN 或 FAIL",
-              "summary": "一句话总结（不超过50字）"
-            }
-            EOF
-            ```
-            请根据实际审查结果填写。
+            1. 使用 git show 查看 commit 详情和变更
+            2. 检查 commit 信息是否清晰、代码变更是否合理、是否有明显问题
 
             ## 输出格式（简体中文）
 
-            直接输出简要报告：
-            ```
             ## 📝 Commit 审查 - ${{ github.ref_name }}
 
             **Commit**: {short_sha}
@@ -76,12 +52,13 @@ jobs:
             ✅/⚠️/❌ {简要评价}
 
             {如有问题，列出1-3个要点}
-            ```
 
             ## 注意事项
             1. 保持简洁
             2. 只关注明显问题
             3. 使用简体中文
+          claude_args: |
+            --json-schema '{"type":"object","properties":{"conclusion":{"type":"string","enum":["PASS","WARN","FAIL"]},"summary":{"type":"string","maxLength":50}},"required":["conclusion","summary"]}'
 
       - name: Notify Feishu
         if: always()
@@ -90,13 +67,14 @@ jobs:
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
 
-          # 读取审查摘要
-          if [ -f /tmp/review-summary.json ]; then
-            CONCLUSION=$(jq -r '.conclusion // "UNKNOWN"' /tmp/review-summary.json)
-            SUMMARY=$(jq -r '.summary // "审查完成"' /tmp/review-summary.json)
+          # 解析结构化输出
+          STRUCTURED_OUTPUT='${{ steps.review.outputs.structured_output }}'
+          if [ -n "$STRUCTURED_OUTPUT" ] && [ "$STRUCTURED_OUTPUT" != "null" ]; then
+            CONCLUSION=$(echo "$STRUCTURED_OUTPUT" | jq -r '.conclusion // "UNKNOWN"')
+            SUMMARY=$(echo "$STRUCTURED_OUTPUT" | jq -r '.summary // "审查完成"')
           else
             CONCLUSION="UNKNOWN"
-            SUMMARY="未获取到审查摘要"
+            SUMMARY="未获取到审查结果"
           fi
 
           # 根据结论设置样式

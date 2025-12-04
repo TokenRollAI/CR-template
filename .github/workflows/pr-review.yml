@@ -7,7 +7,6 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
-    # 跳过 draft PR
     if: github.event.pull_request.draft == false
     permissions:
       contents: read
@@ -26,59 +25,23 @@ jobs:
           github_token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           anthropic_base_url: ${{ secrets.ANTHROPIC_BASE_URL }}
+          use_sticky_comment: true
           prompt: |
-            你是一个专业的代码审查助手。请对 PR #${{ github.event.pull_request.number }} 进行全面审查。
+            你是一个专业的代码审查助手。请对当前 PR 进行全面审查。
 
-            ## 审查信息
-            - 仓库: ${{ github.repository }}
-            - PR 编号: ${{ github.event.pull_request.number }}
-            - PR 标题: ${{ github.event.pull_request.title }}
-
-            ## 审查步骤
-
-            ### 1. 获取 PR 信息
-            执行以下命令获取 PR 详情和代码变更：
-            ```bash
-            gh pr view ${{ github.event.pull_request.number }} --json number,title,body,author,baseRefName,headRefName,files,additions,deletions,changedFiles
-            gh pr diff ${{ github.event.pull_request.number }}
-            ```
-
-            ### 2. 分析代码
-            审查以下维度：
+            ## 审查维度
 
             **代码质量**：代码风格、复杂度、重复代码、命名规范、错误处理、潜在 bug
 
             **架构设计**：项目结构一致性、依赖合理性、设计模式、关注点分离
 
-            ### 3. 保存审查摘要
-            将审查结果写入文件（用于飞书通知）：
-            ```bash
-            cat > /tmp/review-summary.json << 'EOF'
-            {
-              "conclusion": "APPROVE 或 REQUEST_CHANGES 或 COMMENT",
-              "summary": "一句话总结（不超过50字）",
-              "critical_count": 0,
-              "important_count": 0,
-              "suggestion_count": 0
-            }
-            EOF
-            ```
-            请根据实际审查结果填写 JSON 内容。
-
-            ### 4. 发布审查评论
-            使用以下格式发布评论：
-            ```bash
-            gh pr review ${{ github.event.pull_request.number }} --comment --body "评论内容"
-            ```
-
             ## 输出格式（简体中文）
 
-            ```markdown
+            请按以下格式输出审查报告：
+
             ## 🔍 PR 代码审查报告
 
             ### 📋 概要
-            - **PR 标题**: {title}
-            - **作者**: {author}
             - **变更文件数**: {changedFiles}
             - **新增/删除行数**: +{additions} / -{deletions}
 
@@ -96,29 +59,31 @@ jobs:
 
             ### 💡 总体评价
             {对本次 PR 的整体评价}
-            ```
 
             ## 注意事项
             1. 所有评论使用简体中文
             2. 给出具体的文件名和行号
             3. 对好的实践也要给予肯定
             4. 保持客观、专业
+          claude_args: |
+            --json-schema '{"type":"object","properties":{"conclusion":{"type":"string","enum":["APPROVE","REQUEST_CHANGES","COMMENT"]},"summary":{"type":"string","maxLength":50},"critical_count":{"type":"integer"},"important_count":{"type":"integer"},"suggestion_count":{"type":"integer"}},"required":["conclusion","summary","critical_count","important_count","suggestion_count"]}'
 
       - name: Notify Feishu
         if: always()
         run: |
           STATUS="${{ job.status }}"
 
-          # 读取审查摘要
-          if [ -f /tmp/review-summary.json ]; then
-            CONCLUSION=$(jq -r '.conclusion // "UNKNOWN"' /tmp/review-summary.json)
-            SUMMARY=$(jq -r '.summary // "审查完成"' /tmp/review-summary.json)
-            CRITICAL=$(jq -r '.critical_count // 0' /tmp/review-summary.json)
-            IMPORTANT=$(jq -r '.important_count // 0' /tmp/review-summary.json)
-            SUGGESTION=$(jq -r '.suggestion_count // 0' /tmp/review-summary.json)
+          # 解析结构化输出
+          STRUCTURED_OUTPUT='${{ steps.review.outputs.structured_output }}'
+          if [ -n "$STRUCTURED_OUTPUT" ] && [ "$STRUCTURED_OUTPUT" != "null" ]; then
+            CONCLUSION=$(echo "$STRUCTURED_OUTPUT" | jq -r '.conclusion // "UNKNOWN"')
+            SUMMARY=$(echo "$STRUCTURED_OUTPUT" | jq -r '.summary // "审查完成"')
+            CRITICAL=$(echo "$STRUCTURED_OUTPUT" | jq -r '.critical_count // 0')
+            IMPORTANT=$(echo "$STRUCTURED_OUTPUT" | jq -r '.important_count // 0')
+            SUGGESTION=$(echo "$STRUCTURED_OUTPUT" | jq -r '.suggestion_count // 0')
           else
             CONCLUSION="UNKNOWN"
-            SUMMARY="未获取到审查摘要"
+            SUMMARY="未获取到审查结果"
             CRITICAL=0
             IMPORTANT=0
             SUGGESTION=0
